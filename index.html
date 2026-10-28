@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Money Tracker - Advanced Offline App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for visual breakdown -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Hind', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-10">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-indigo-700 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-wallet text-2xl text-yellow-300"></i>
+                <h1 class="text-xl font-bold tracking-wide">My Money Tracker</h1>
+            </div>
+            <button onclick="exportCSV()" title="CSV Export" class="bg-indigo-600 hover:bg-indigo-800 text-xs text-white px-3 py-1.5 rounded-lg flex items-center space-x-1 border border-indigo-500 transition">
+                <i class="fa-solid fa-file-excel text-green-300"></i>
+                <span>Export</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 mt-4 space-y-4">
+
+        <!-- Balance Card -->
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg p-5 text-white relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+            
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-medium text-indigo-100 uppercase tracking-wider">कुल बजट / शुरुआती बैलेंस</p>
+                    <div class="flex items-center space-x-2 mt-1">
+                        <span class="text-lg font-semibold text-indigo-200">₹</span>
+                        <input type="number" id="totalBudgetInput" placeholder="0" class="bg-indigo-800/50 text-white text-xl font-bold rounded px-2 py-0.5 w-32 focus:outline-none focus:ring-2 focus:ring-yellow-400 border border-indigo-400/40" onchange="updateBudget(this.value)">
+                    </div>
+                </div>
+                <button onclick="openTopUpModal()" class="bg-yellow-400 hover:bg-yellow-300 text-indigo-900 font-bold text-xs px-3 py-2 rounded-xl shadow flex items-center space-x-1 transition active:scale-95">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>पैसा जोड़ें</span>
+                </button>
+            </div>
+
+            <hr class="my-3 border-indigo-400/30">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-xs font-medium text-indigo-200">कुल खर्च (Total Spent)</p>
+                    <p class="text-lg font-bold text-red-300 mt-0.5">₹ <span id="totalExpenses">0</span></p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-indigo-200">बचा हुआ पैसा (Remaining)</p>
+                    <p class="text-2xl font-black text-green-300 mt-0.5">₹ <span id="remainingBalance">0</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Expense Form Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <h2 class="text-sm font-bold text-gray-700 mb-3 flex items-center space-x-2">
+                <i class="fa-solid fa-cart-plus text-indigo-600"></i>
+                <span>नया खर्च जोड़ें (Add Expense)</span>
+            </h2>
+            <form id="expenseForm" onsubmit="addExpense(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">सामान या काम का नाम</label>
+                    <input type="text" id="title" required placeholder="जैसे: सब्जी, रिचार्ज, बस टिकट..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">रकम (₹)</label>
+                        <input type="number" id="amount" min="1" step="any" required placeholder="0.00" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">कैटेगरी (Category)</label>
+                        <select id="category" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            <option value="Groceries">🛒 किराना / सामान</option>
+                            <option value="Food">🍔 खाना / चाय</option>
+                            <option value="Travel">🚌 किराया / पेट्रोल</option>
+                            <option value="Recharge">📱 रिचार्ज / बिल</option>
+                            <option value="Medical">💊 दवाई / हेल्थ</option>
+                            <option value="Other">📦 अन्य (Other)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">तारीख (Date)</label>
+                        <input type="date" id="expenseDate" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">समय (Time)</label>
+                        <input type="time" id="expenseTime" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-md active:scale-98 flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>खर्च सेव करें</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Filter & Search Section -->
+        <div class="flex items-center justify-between space-x-2 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                <input type="text" id="searchInput" onkeyup="filterExpenses()" placeholder="सर्च करें..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <select id="filterCategory" onchange="filterExpenses()" class="text-xs border border-gray-200 bg-gray-50 rounded-lg px-2 py-1.5 focus:outline-none">
+                <option value="All">सभी कैटेगरी</option>
+                <option value="Groceries">🛒 किराना</option>
+                <option value="Food">🍔 खाना</option>
+                <option value="Travel">🚌 किराया</option>
+                <option value="Recharge">📱 रिचार्ज</option>
+                <option value="Medical">💊 दवाई</option>
+                <option value="Other">📦 अन्य</option>
+            </select>
+        </div>
+
+        <!-- Expenses List Header -->
+        <div class="flex justify-between items-center px-1">
+            <h3 class="text-sm font-bold text-gray-700">खर्चों की सूची (Transactions)</h3>
+            <button onclick="clearAllData()" class="text-xs text-red-500 hover:text-red-700 font-medium flex items-center space-x-1">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>सब मिटाएं</span>
+            </button>
+        </div>
+
+        <!-- Expense History List -->
+        <div id="expenseList" class="space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar pr-1">
+            <!-- Dynamic expense items will appear here -->
+        </div>
+
+    </main>
+
+    <!-- Modal for Adding Extra Money -->
+    <div id="topUpModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-gray-800 text-base">बैलेंस में पैसा जोड़ें (+ Income)</h3>
+                <button onclick="closeTopUpModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">कितना पैसा जोड़ना है? (₹)</label>
+                <input type="number" id="addMoneyAmount" placeholder="जैसे: 5000" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="closeTopUpModal()" class="w-1/2 py-2 text-xs font-semibold border border-gray-300 text-gray-600 rounded-xl">रद्द करें</button>
+                <button onclick="addExtraMoney()" class="w-1/2 py-2 text-xs font-semibold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">जोड़ें</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let totalBudget = parseFloat(localStorage.getItem('mmt_budget')) || 0;
+        let expenses = JSON.parse(localStorage.getItem('mmt_expenses')) || [];
+
+        // Category Icon Mapping
+        const categoryIcons = {
+            'Groceries': { icon: 'fa-cart-shopping', color: 'bg-green-100 text-green-600' },
+            'Food': { icon: 'fa-utensils', color: 'bg-amber-100 text-amber-600' },
+            'Travel': { icon: 'fa-bus', color: 'bg-blue-100 text-blue-600' },
+            'Recharge': { icon: 'fa-mobile-screen-button', color: 'bg-purple-100 text-purple-600' },
+            'Medical': { icon: 'fa-kit-medical', color: 'bg-red-100 text-red-600' },
+            'Other': { icon: 'fa-box', color: 'bg-gray-100 text-gray-600' }
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set Default Date and Time to Now
+            const now = new Date();
+            document.getElementById('expenseDate').value = now.toISOString().split('T')[0];
+            document.getElementById('expenseTime').value = now.toTimeString().slice(0, 5);
+
+            document.getElementById('totalBudgetInput').value = totalBudget || '';
+            renderApp();
+        });
+
+        // Save data to LocalStorage
+        function saveData() {
+            localStorage.setItem('mmt_budget', totalBudget);
+            localStorage.setItem('mmt_expenses', JSON.stringify(expenses));
+        }
+
+        // Update Total Budget
+        function updateBudget(val) {
+            totalBudget = parseFloat(val) || 0;
+            saveData();
+            renderApp();
+        }
+
+        // Add Extra Money to Budget
+        function addExtraMoney() {
+            const amt = parseFloat(document.getElementById('addMoneyAmount').value);
+            if (!amt || amt <= 0) return alert('कृपया सही रकम दर्ज करें!');
+            totalBudget += amt;
+            document.getElementById('totalBudgetInput').value = totalBudget;
+            document.getElementById('addMoneyAmount').value = '';
+            closeTopUpModal();
+            saveData();
+            renderApp();
+        }
+
+        // Add New Expense
+        function addExpense(e) {
+            e.preventDefault();
+            const title = document.getElementById('title').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            const date = document.getElementById('expenseDate').value;
+            const time = document.getElementById('expenseTime').value;
+
+            if (!title || !amount || amount <= 0) return;
+
+            const newExpense = {
+                id: Date.now(),
+                title,
+                amount,
+                category,
+                date,
+                time
+            };
+
+            expenses.unshift(newExpense); // Add at top
+            saveData();
+
+            // Reset Form fields except date & time
+            document.getElementById('title').value = '';
+            document.getElementById('amount').value = '';
+
+            renderApp();
+        }
+
+        // Delete Single Expense
+        function deleteExpense(id) {
+            if (confirm('क्या आप इस खर्च को सूची से हटाना चाहते हैं?')) {
+                expenses = expenses.filter(exp => exp.id !== id);
+                saveData();
+                renderApp();
+            }
+        }
+
+        // Clear All Data
+        function clearAllData() {
+            if (confirm('क्या आप पूरा डेटा (कुल बजट और सभी खर्च) मिटाना चाहते हैं?')) {
+                totalBudget = 0;
+                expenses = [];
+                localStorage.removeItem('mmt_budget');
+                localStorage.removeItem('mmt_expenses');
+                document.getElementById('totalBudgetInput').value = '';
+                renderApp();
+            }
+        }
+
+        // Render UI
+        function renderApp() {
+            const totalSpent = expenses.reduce((sum, item) => sum + item.amount, 0);
+            const remaining = totalBudget - totalSpent;
+
+            document.getElementById('totalExpenses').innerText = totalSpent.toLocaleString('en-IN');
+            
+            const remainingElem = document.getElementById('remainingBalance');
+            remainingElem.innerText = remaining.toLocaleString('en-IN');
+            if (remaining < 0) {
+                remainingElem.classList.remove('text-green-300');
+                remainingElem.classList.add('text-red-400');
+            } else {
+                remainingElem.classList.remove('text-red-400');
+                remainingElem.classList.add('text-green-300');
+            }
+
+            filterExpenses();
+        }
+
+        // Filter & Display Expenses List
+        function filterExpenses() {
+            const listElem = document.getElementById('expenseList');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const catFilter = document.getElementById('filterCategory').value;
+
+            listElem.innerHTML = '';
+
+            const filtered = expenses.filter(item => {
+                const matchesSearch = item.title.toLowerCase().includes(search);
+                const matchesCat = catFilter === 'All' || item.category === catFilter;
+                return matchesSearch && matchesCat;
+            });
+
+            if (filtered.length === 0) {
+                listElem.innerHTML = `
+                    <div class="text-center py-8 bg-white rounded-xl border border-dashed border-gray-300 text-gray-400 text-xs">
+                        <i class="fa-solid fa-receipt text-3xl mb-2 text-gray-300"></i>
+                        <p>कोई खर्च नहीं मिला</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Calculate running balance for display
+            // We compute cumulative spent up to each item in chronological order
+            let running = totalBudget;
+            // Chronological order copy to calculate exact running balance at each point
+            const sortedAsc = [...expenses].reverse();
+            const runningBalances = {};
+
+            let currentBal = totalBudget;
+            sortedAsc.forEach(exp => {
+                currentBal -= exp.amount;
+                runningBalances[exp.id] = currentBal;
+            });
+
+            filtered.forEach(exp => {
+                const iconInfo = categoryIcons[exp.category] || categoryIcons['Other'];
+                const formattedDate = formatDate(exp.date);
+                const formattedTime = formatTime(exp.time);
+                const balAtPoint = runningBalances[exp.id] !== undefined ? runningBalances[exp.id] : 0;
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between transition hover:shadow-md";
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl ${iconInfo.color} flex items-center justify-center font-lg shadow-sm">
+                            <i class="fa-solid ${iconInfo.icon}"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm capitalize">${escapeHtml(exp.title)}</h4>
+                            <div class="text-[11px] text-gray-400 flex items-center space-x-2 mt-0.5">
+                                <span><i class="fa-regular fa-calendar-days mr-1"></i>${formattedDate}</span>
+                                <span>•</span>
+                                <span><i class="fa-regular fa-clock mr-1"></i>${formattedTime}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-right">
+                        <p class="font-extrabold text-sm text-red-500">- ₹${exp.amount.toLocaleString('en-IN')}</p>
+                        <p class="text-[10px] text-gray-400 font-medium">बचा: ₹${balAtPoint.toLocaleString('en-IN')}</p>
+                    </div>
+
+                    <button onclick="deleteExpense(${exp.id})" class="ml-2 text-gray-300 hover:text-red-500 p-1 transition">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                `;
+                listElem.appendChild(card);
+            });
+        }
+
+        // Export Data as CSV
+        function exportCSV() {
+            if (expenses.length === 0) return alert('एक्सपोर्ट करने के लिए कोई डेटा नहीं है!');
+
+            let csvContent = "data:text/csv;charset=utf-8,ID,Title,Amount,Category,Date,Time\n";
+            expenses.forEach(exp => {
+                csvContent += `${exp.id},"${exp.title}",${exp.amount},${exp.category},${exp.date},${exp.time}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `My_Money_Tracker_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Helpers
+        function openTopUpModal() { document.getElementById('topUpModal').classList.remove('hidden'); }
+        function closeTopUpModal() { document.getElementById('topUpModal').classList.add('hidden'); }
+
+        function formatDate(dateStr) {
+            if(!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('hi-IN', { day: 'numeric', month: 'short' });
+        }
+
+        function formatTime(timeStr) {
+            if(!timeStr) return '';
+            const [h, m] = timeStr.split(':');
+            let hour = parseInt(h);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12 || 12;
+            return `${hour}:${m} ${ampm}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
